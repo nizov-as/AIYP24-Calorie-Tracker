@@ -54,7 +54,7 @@ async def load(model_id: str):
             loaded_models['detect'] = yolov_model
             return [LoadResponse(message="YOLO model loaded successfully")]
 
-        elif model_id == 'classifi':
+        elif model_id == 'classific':
             # Загрузка модели классификации
 
             return [LoadResponse(message="Classification model loaded successfully")]
@@ -89,7 +89,7 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
                         'class': model.names[int(cls)],  # Получаем имя класса
                         'confidence': conf  # Уверенность предсказания
                     })
-        # elif model_id == 'classifi':
+        # elif model_id == 'classific':
 
             # predictions.append({
             #     'class': str(predicted.item()),  # Получаем предсказанный класс
@@ -99,11 +99,22 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
     return PredictionResponse(predictions=predictions)
 
 
-# @router.delete("/remove/{model_id}", response_model=RemoveResponse)
-# async def remove(model_id: str):
-#
-#
-# @router.delete("/remove_all", response_model=RemoveResponse)
-# async def remove_all():
+@router.delete("/remove/{model_id}", response_model=RemoveResponse)
+async def remove(model_id: str):
+    if model_id not in loaded_models:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Model not found")
+
+    del loaded_models[model_id]  # Удаляем модель из loaded_models
+    return RemoveResponse(message=f"Model '{model_id}' removed successfully.")
+
+
+@router.delete("/remove_all", response_model=RemoveResponse)
+async def remove_all():
+    if not loaded_models:
+        return RemoveResponse(message="No models to remove")
+
+    removed_models = list(loaded_models.keys())
+    loaded_models.clear()  # Очищаем словарь загруженных моделей
+    return RemoveResponse(message=", ".join(f"Model '{model_id}' removed" for model_id in removed_models))
 
 
