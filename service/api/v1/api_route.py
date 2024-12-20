@@ -3,10 +3,9 @@ from http import HTTPStatus
 from pydantic import BaseModel
 from typing import Union, Dict, List
 import numpy as np
-import torch
+from keras.models import load_model
 import cv2
 import os
-from torchvision import models, transforms
 from ultralytics import YOLO
 
 router = APIRouter()
@@ -56,11 +55,13 @@ async def load(model_id: str):
 
         elif model_id == 'classific':
             # Загрузка модели классификации
-
+            classification_model_path = os.path.join(model_directory, 'best_model_101class.keras')
+            classification_model = load_model(classification_model_path)  # Используем load_model из Keras
+            loaded_models['classific'] = classification_model
             return [LoadResponse(message="Classification model loaded successfully")]
 
         else:
-            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid model_id provided. Use 'detect' or 'classifi'.")
+            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid model_id provided. Use 'detect' or 'classifiс'.")
 
     except Exception as e:
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(e))
@@ -89,12 +90,21 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
                         'class': model.names[int(cls)],  # Получаем имя класса
                         'confidence': conf  # Уверенность предсказания
                     })
-        # elif model_id == 'classific':
+        elif model_id == 'classific':
+            # Подготовка изображения для классификации
+            img = cv2.resize(image, (200, 200))  # Изменяем размер изображения
+            img = np.expand_dims(img, axis=0)
+            img = img / 255.0  # Нормализация изображения
 
-            # predictions.append({
-            #     'class': str(predicted.item()),  # Получаем предсказанный класс
-            #     'confidence': confidence[predicted].item()  # Уверенность предсказания
-            # })
+            # Предсказание класса
+            pred = model.predict(img)
+            index = np.argmax(pred)
+            class_name = str(index)
+            confidence = pred[0][index]  # Уверенность предсказания
+            predictions.append({
+                'class': class_name,  # Получаем предсказанный класс
+                'confidence': confidence  # Уверенность предсказания
+            })
 
     return PredictionResponse(predictions=predictions)
 
