@@ -40,32 +40,74 @@ class LoadResponse(BaseModel):
 class RemoveResponse(BaseModel):
     message: str
 
+class FitRequest(BaseModel):
+    model_id: str  # Добавляем model_id
+
+class FitResponse(BaseModel):
+    message: str
+
+
+# Дообучение модели
+@router.post("/fit", response_model=FitResponse)
+async def fit(request: FitRequest):
+    model_id = request.model_id
+
+    if model_id == 'detect':
+        if 'detect' not in loaded_models:
+            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="YOLO model not loaded.")
+
+        yolov_model = loaded_models['detect']
+        data_path = os.path.join(os.getcwd(), 'fit/data.yaml')
+
+        yolov_model.train(data=data_path, epochs=1,
+                          imgsz=480,
+                          batch=32,
+                          lr0=0.0015,
+                          device="cpu",
+                          name='yolov11s_client')
+
+        # Сохранение дообученной модели
+        yolov_model.save(os.path.join(os.getcwd(), 'models/custom.pt'))
+        loaded_models['custom'] = yolov_model  # Сохраняем в loaded_models
+
+        return FitResponse(message="YOLO model trained and saved as 'custom' successfully.")
+
+    else:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid model_id provided.")
+
+
 # Загрузка моделей
 @router.post("/load", response_model=List[LoadResponse])
 async def load(model_id: str):
     try:
-        # Определяем путь к папке models
-        model_directory = Path(__file__).parent.parent / "models"
+        model_directory = os.path.join(os.getcwd(), 'models')
 
         if model_id == 'detect':
-            # Загрузка YOLO модели
             yolov_model_path = os.path.join(model_directory, 'custom_yolov11s_e100.pt')
-            yolov_model = YOLO(yolov_model_path)  # Загружаем модель с весами
+            yolov_model = YOLO(yolov_model_path)
             loaded_models['detect'] = yolov_model
             return [LoadResponse(message="YOLO model loaded successfully")]
 
         elif model_id == 'classific':
-            # Загрузка модели классификации
-            classification_model_path = os.path.join(model_directory, 'best_model_101class.keras')
-            classification_model = load_model(classification_model_path)  # Используем load_model из Keras
+            classification_model_path = os.path.join(model_directory, 'custom_model.h5')
+            classification_model = load_model(classification_model_path)
             loaded_models['classific'] = classification_model
             return [LoadResponse(message="Classification model loaded successfully")]
 
+        elif model_id == 'custom':
+            # Загрузка кастомной модели
+            for key, model in loaded_models.items():
+                if key == 'custom':
+                    return [LoadResponse(message="Custom model loaded successfully")]
+
+            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Custom model not found.")
+
         else:
-            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid model_id provided. Use 'detect' or 'classifiс'.")
+            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST,
+                                detail="Invalid model_id provided. Use 'detect', 'classific' or 'custom'.")
 
     except Exception as e:
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(e))    
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 @router.post("/predict", response_model=PredictionResponse)
