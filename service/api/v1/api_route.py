@@ -7,6 +7,8 @@ from keras.models import load_model
 import cv2
 import os
 from ultralytics import YOLO
+import base64
+from pathlib import Path
 
 router = APIRouter()
 
@@ -38,13 +40,12 @@ class LoadResponse(BaseModel):
 class RemoveResponse(BaseModel):
     message: str
 
-
 # Загрузка моделей
 @router.post("/load", response_model=List[LoadResponse])
 async def load(model_id: str):
     try:
         # Определяем путь к папке models
-        model_directory = os.path.join(os.getcwd(), 'models')
+        model_directory = Path(__file__).parent.parent / "models"
 
         if model_id == 'detect':
             # Загрузка YOLO модели
@@ -64,7 +65,7 @@ async def load(model_id: str):
             raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid model_id provided. Use 'detect' or 'classifiс'.")
 
     except Exception as e:
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(e))    
 
 
 @router.post("/predict", response_model=PredictionResponse)
@@ -77,19 +78,45 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
 
     for uploaded_file in images:
         # Чтение файла
-        image = await uploaded_file.read()
-        image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)
+        image_bytes = await uploaded_file.read()
+        image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
         if image is None:
-            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Could not decode image: {uploaded_file.filename}")
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=f"Could not decode image: {uploaded_file.filename}",
+            )
 
-        if model_id == 'detect':
+        if model_id == "detect":
             results = model(image)  # Получаем предсказания
+            
             for result in results:
-                for *box, conf, cls in result.boxes.data.tolist():  # Получаем предсказания
+                for *box, conf, cls in result.boxes.data.tolist():
+                    # Распаковываем координаты бокса
+                    x_min, y_min, x_max, y_max = map(int, box)
+                    class_name = model.names[int(cls)]
+
+                    # Добавляем предсказание в список
                     predictions.append({
-                        'class': model.names[int(cls)],  # Получаем имя класса
-                        'confidence': conf  # Уверенность предсказания
+                        "class": class_name,
+                        "confidence": conf,
                     })
+
+                    # Отрисовка bounding box
+                    color = (0, 255, 0)  # Зеленый цвет
+                    cv2.rectangle(image, (x_min, y_min), (x_max, y_max), color, 2)
+
+                    # Добавление текста
+                    label = f"{class_name} ({conf:.2f})"
+                    cv2.putText(image, label, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
+            # Конвертируем изображение в Base64
+            _, buffer = cv2.imencode(".jpg", image)
+            image_base64 = base64.b64encode(buffer).decode("utf-8")
+
+            predictions.append({
+                "image": image_base64,  # Возвращаем изображение в Base64
+            })
+
         elif model_id == 'classific':
             # Подготовка изображения для классификации
             img = cv2.resize(image, (200, 200))  # Изменяем размер изображения
