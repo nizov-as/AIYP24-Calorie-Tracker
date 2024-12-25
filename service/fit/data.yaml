@@ -1,0 +1,5 @@
+train: C:\Users\krugd\OneDrive\Рабочий стол\HSE_progect\dataset\AIYP24-Calorie-Tracker\service\fit\train\images 
+val: C:\Users\krugd\OneDrive\Рабочий стол\HSE_progect\dataset\AIYP24-Calorie-Tracker\service\fit\val\images
+# Classes
+nc : 1
+names: ['rice']
