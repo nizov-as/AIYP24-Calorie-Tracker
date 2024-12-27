@@ -8,6 +8,9 @@ import cv2
 import os
 from ultralytics import YOLO
 import base64
+import matplotlib.pyplot as plt
+import seaborn as sns
+from io import BytesIO
 from pathlib import Path
 
 router = APIRouter()
@@ -46,6 +49,100 @@ class FitRequest(BaseModel):
 class FitResponse(BaseModel):
     message: str
 
+
+@router.post("/eda", response_model=Dict[str, List[str]])
+async def eda():
+    categories = 'category.txt'
+    bbox_files = 'bb_info.txt'
+    imgs_format = 'jpg'
+
+    category_ids = []
+    category_names = []
+
+    path = r'C:\Users\krugd\OneDrive\Рабочий стол\HSE_progect\dataset\AIYP24-Calorie-Tracker\UECFOOD256'
+
+    # Загружаем категории
+    with open(os.path.join(path, categories), 'r') as list_:
+        for i, line in enumerate(list_):
+            if i > 0:  # skip header
+                line = line.rstrip('\n').split('\t')
+                category_ids.append(int(line[0]))
+                category_names.append(line[1])
+
+    categories_images = []
+    categories_bbox_info = []
+
+    for id_pos, id in enumerate(category_ids):
+        categories_images.append([])
+        categories_bbox_info.append([])
+
+        # Читаем файлы
+        imgs_file_list = os.path.join(path, str(id), bbox_files)
+        with open(imgs_file_list, 'r') as list_:
+            for i, line in enumerate(list_):
+                if i > 0:  # skip header
+                    line = line.rstrip('\n').split(' ')
+                    categories_images[id_pos].append(line[0])
+                    line = list(map(float, line[1:]))
+                    categories_bbox_info[id_pos].append(line)
+
+    # График 1: Топ-10 категорий с наибольшим количеством изображений
+    category_count = {category_names[i]: len(categories_images[i]) for i in range(len(category_names))}
+    sorted_categories = sorted(category_count.items(), key=lambda x: x[1], reverse=True)[:10]
+
+    x = [x[0] for x in sorted_categories]
+    y = [x[1] for x in sorted_categories]
+
+    plt.figure(figsize=(12, 6))
+    sns.barplot(x=x, y=y, palette="viridis")
+    plt.xticks(rotation=45)
+    plt.title('Топ-10 категорий с наибольшим количеством изображений')
+
+    # Сохраняем график в буфер
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    image_base64_1 = base64.b64encode(buf.getvalue()).decode('utf-8')
+    plt.close()
+
+    # График 2: Плотность расположения объектов
+    centers_x = [(bbox[0] + bbox[2]) / 2 for bbox_info in categories_bbox_info for bbox in bbox_info]
+    centers_y = [(bbox[1] + bbox[3]) / 2 for bbox_info in categories_bbox_info for bbox in bbox_info]
+
+    plt.figure(figsize=(8, 8))
+    sns.kdeplot(x=centers_x, y=centers_y, cmap="Reds", fill=True)
+    plt.xlabel("Центр X")
+    plt.ylabel("Центр Y")
+    plt.title("Плотность расположения объектов на изображениях")
+
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    image_base64_2 = base64.b64encode(buf.getvalue()).decode('utf-8')
+    plt.close()
+
+    # График 3: Распределение площадей объектов
+    areas = [(bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) for bbox_info in categories_bbox_info for bbox in bbox_info]
+
+    plt.figure(figsize=(8, 6))
+    plt.hist(areas, bins=50)
+    plt.xlabel("Площадь bounding box")
+    plt.ylabel("Количество объектов")
+    plt.title("Распределение площадей объектов в bounding box")
+
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    image_base64_3 = base64.b64encode(buf.getvalue()).decode('utf-8')
+    plt.close()
+
+    return {
+        "images": [
+            image_base64_1,
+            image_base64_2,
+            image_base64_3
+        ]
+    }
 
 # Дообучение модели
 @router.post("/fit", response_model=FitResponse)
@@ -130,7 +227,7 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
 
         if model_id == "detect":
             results = model(image)  # Получаем предсказания
-            
+
             for result in results:
                 for *box, conf, cls in result.boxes.data.tolist():
                     # Распаковываем координаты бокса
@@ -175,6 +272,36 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
                 'confidence': confidence  # Уверенность предсказания
             })
 
+        elif model_id == "custom":
+            results = model(image)  # Получаем предсказания
+
+            for result in results:
+                for *box, conf, cls in result.boxes.data.tolist():
+                    # Распаковываем координаты бокса
+                    x_min, y_min, x_max, y_max = map(int, box)
+                    class_name = model.names[int(cls)]
+
+                    # Добавляем предсказание в список
+                    predictions.append({
+                        "class": class_name,
+                        "confidence": conf,
+                    })
+
+                    # Отрисовка bounding box
+                    color = (0, 255, 0)  # Зеленый цвет
+                    cv2.rectangle(image, (x_min, y_min), (x_max, y_max), color, 2)
+
+                    # Добавление текста
+                    label = f"{class_name} ({conf:.2f})"
+                    cv2.putText(image, label, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
+            # Конвертируем изображение в Base64
+            _, buffer = cv2.imencode(".jpg", image)
+            image_base64 = base64.b64encode(buffer).decode("utf-8")
+
+            predictions.append({
+                "image": image_base64,  # Возвращаем изображение в Base64
+            })
     return PredictionResponse(predictions=predictions)
 
 
