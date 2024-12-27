@@ -59,7 +59,7 @@ async def eda():
     category_ids = []
     category_names = []
 
-    path = r'C:\Users\krugd\OneDrive\Рабочий стол\HSE_progect\dataset\AIYP24-Calorie-Tracker\UECFOOD256'
+    path = r'/Users/aleksandralomakina/Downloads/UECFOOD256'
 
     # Загружаем категории
     with open(os.path.join(path, categories), 'r') as list_:
@@ -154,7 +154,8 @@ async def fit(request: FitRequest):
             raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="YOLO model not loaded.")
 
         yolov_model = loaded_models['detect']
-        data_path = os.path.join(os.getcwd(), 'fit/data.yaml')
+        # data_path = os.path.join(os.getcwd(), 'fit/data.yaml')
+        data_path = Path(__file__).parent.parent / "fit/data.yaml"
 
         yolov_model.train(data=data_path, epochs=1,
                           imgsz=480,
@@ -164,7 +165,7 @@ async def fit(request: FitRequest):
                           name='yolov11s_client')
 
         # Сохранение дообученной модели
-        yolov_model.save(os.path.join(os.getcwd(), 'models/custom.pt'))
+        yolov_model.save(Path(__file__).parent.parent / 'models/custom.pt')
         loaded_models['custom'] = yolov_model  # Сохраняем в loaded_models
 
         return FitResponse(message="YOLO model trained and saved as 'custom' successfully.")
@@ -177,7 +178,7 @@ async def fit(request: FitRequest):
 @router.post("/load", response_model=List[LoadResponse])
 async def load(model_id: str):
     try:
-        model_directory = os.path.join(os.getcwd(), 'models')
+        model_directory = Path(__file__).parent.parent / "models"
 
         if model_id == 'detect':
             yolov_model_path = os.path.join(model_directory, 'custom_yolov11s_e100.pt')

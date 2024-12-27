@@ -5,7 +5,7 @@ import io
 import base64
 import json
 from streamlit_lottie import st_lottie
-
+import time  # Для имитации прогресса
 
 BASE_URL = "http://127.0.0.1:8000/api/v1/models"
 
@@ -46,6 +46,7 @@ title = "🍽️ Calorie-Tracker 🍽️"
 subheader_model = "Выберите модель"
 subheader_image = "Загрузите изображение для обработки"
 subheader_prediction = "Результаты предсказания:"
+subheader_eda = "Exploratory Data Analysis (EDA)"
 
 # Заголовок страницы
 st.markdown(f'<p class="title">{title}</p>', unsafe_allow_html=True)
@@ -73,6 +74,46 @@ if st.sidebar.button("🔄 Загрузить модель"):
     except Exception as e:
         st.sidebar.error(f"⚠️ Произошла ошибка при загрузке модели: {str(e)}")
 
+# Флаг завершения анализа EDA
+if "eda_completed" not in st.session_state:
+    st.session_state["eda_completed"] = False
+
+# Кнопка для запуска EDA
+eda_placeholder = st.sidebar.empty()
+
+if st.sidebar.button("📊 Провести EDA"):
+    with st.spinner("Выполняется анализ данных..."):
+        for i in range(100):
+            time.sleep(0.03)  # Имитируем выполнение для красоты))))
+            eda_placeholder.progress(i + 1)
+        
+        try:
+            # Запрос на сервер для выполнения EDA
+            response = requests.post(f"{BASE_URL}/eda")
+            if response.status_code == 200:
+                images = response.json().get("images", [])
+                if images:
+                    st.session_state["eda_images"] = images
+                    st.session_state["eda_completed"] = True
+                    st.sidebar.success("✅ Анализ данных завершён!")
+                else:
+                    st.sidebar.warning("⚠️ Сервис не вернул графики.")
+            else:
+                error_detail = response.json().get("detail", response.text)
+                st.sidebar.error(f"❌ Ошибка: {error_detail}")
+        except Exception as e:
+            st.sidebar.error(f"⚠️ Произошла ошибка: {str(e)}")
+
+# Показать/скрыть графики EDA, если анализ завершен
+if st.session_state["eda_completed"]:
+    show_graphs = st.checkbox("Показать/Скрыть графики EDA", value=True)
+
+    if show_graphs:
+        for idx, img_base64 in enumerate(st.session_state.get("eda_images", [])):
+            image_bytes = base64.b64decode(img_base64)
+            image = Image.open(io.BytesIO(image_bytes))
+            st.image(image, caption=f"График {idx + 1}", use_column_width=True)
+
 # Заголовок для загрузки изображения
 st.markdown(f'<p class="subheader">{subheader_image}</p>', unsafe_allow_html=True)
 
@@ -80,7 +121,6 @@ st.markdown(f'<p class="subheader">{subheader_image}</p>', unsafe_allow_html=Tru
 uploaded_files = st.file_uploader(
     "Выберите изображение/изображения", type=["jpg", "jpeg", "png"], accept_multiple_files=True
 )
-
 # Предсказание
 if uploaded_files and st.button("🔍 Сделать предсказание"):
     files = [("images", (file.name, file.getvalue(), file.type)) for file in uploaded_files]
