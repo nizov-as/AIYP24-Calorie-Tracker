@@ -187,7 +187,7 @@ async def load(model_id: str):
             return [LoadResponse(message="YOLO model loaded successfully")]
 
         elif model_id == 'classific':
-            classification_model_path = os.path.join(model_directory, 'custom_model.h5')
+            classification_model_path = os.path.join(model_directory, 'best_model_101class.keras')
             classification_model = load_model(classification_model_path)
             loaded_models['classific'] = classification_model
             return [LoadResponse(message="Classification model loaded successfully")]
