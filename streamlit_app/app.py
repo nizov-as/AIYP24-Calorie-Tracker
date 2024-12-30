@@ -10,7 +10,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import os
 
-BASE_URL = "http://127.0.0.1:8000/api/v1/models"
+BASE_URL = "http://fastapi:8000/api/v1/models"
 
 log_dir = "logs"
 os.makedirs(log_dir, exist_ok=True)
@@ -143,7 +143,7 @@ if st.sidebar.button("⚙️ Дообучить модель YOLO на двух 
 # Кнопка для проверки состояния сервиса
 if st.sidebar.button("🛠️ Проверить состояние сервиса"):
     try:
-        response = requests.get("http://127.0.0.1:8000/")
+        response = requests.get("http://fastapi:8000/")
         if response.status_code == 200:
             st.sidebar.success(
                 f"✅ Сервис работает: {response.json().get('status', 'OK')}"
@@ -187,11 +187,12 @@ if st.button("Загрузить модель"):
                 st.success(f"✅ Модель '{selected_model}' успешно загружена!")
                 logger.info(f"Модель {selected_model} успешно загружена.")
             else:
+                temp_str = response.json().get(
+                    'detail',
+                    'Неизвестная ошибка'
+                )
                 st.error(
-                    f"❌ Ошибка: {response.json().get(
-                        'detail',
-                        'Неизвестная ошибка'
-                    )}"
+                    f"❌ Ошибка: {temp_str}"
                 )
                 logger.error(
                     f"Ошибка загрузки модели {selected_model}: {response.text}"
@@ -249,11 +250,13 @@ if uploaded_files and st.button("🔍 Сделать предсказание"):
                         )
                 logger.info("Предсказания успешно выполнены и отображены.")
         else:
+            temp_str = response.json().get(
+                'detail',
+                'Неизвестная ошибка'
+            )
             st.error(
-                f"❌ Ошибка: {response.json().get(
-                    'detail',
-                    'Неизвестная ошибка')}"
-                )
+                f"❌ Ошибка: {temp_str}"
+            )
             logger.error(f"Ошибка предсказания: {response.text}")
     except Exception as e:
         st.error(f"⚠️ Произошла ошибка: {str(e)}")

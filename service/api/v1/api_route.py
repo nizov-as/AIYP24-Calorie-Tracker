@@ -61,7 +61,7 @@ async def eda():
     category_ids = []
     category_names = []
 
-    path = r'/Users/aleksandralomakina/Downloads/UECFOOD256'
+    path = r'/app/data/UECFOOD256'
 
     # Загружаем категории
     with open(os.path.join(path, categories), 'r') as list_:
