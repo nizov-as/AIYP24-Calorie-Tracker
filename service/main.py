@@ -1,8 +1,8 @@
 import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel, ConfigDict
-
 from service.api.v1.api_route import router
+
 
 app = FastAPI(
     title="Detection_Model_Inference",
@@ -17,12 +17,13 @@ class StatusResponse(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={"examples": [{"status": "App healthy"}]}
     )
+
+
 @app.get("/", response_model=StatusResponse)
 async def root():
     return StatusResponse(status="App healthy")
 
 
-## Реализуйте роутер с префиксом /api/v1/models
 app.include_router(router, prefix="/api/v1/models")
 
 if __name__ == "__main__":

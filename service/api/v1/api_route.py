@@ -43,8 +43,10 @@ class LoadResponse(BaseModel):
 class RemoveResponse(BaseModel):
     message: str
 
+
 class FitRequest(BaseModel):
     model_id: str  # Добавляем model_id
+
 
 class FitResponse(BaseModel):
     message: str
@@ -87,8 +89,15 @@ async def eda():
                     categories_bbox_info[id_pos].append(line)
 
     # График 1: Топ-10 категорий с наибольшим количеством изображений
-    category_count = {category_names[i]: len(categories_images[i]) for i in range(len(category_names))}
-    sorted_categories = sorted(category_count.items(), key=lambda x: x[1], reverse=True)[:10]
+    category_count = {
+        category_names[i]: len(categories_images[i])
+        for i in range(len(category_names))
+    }
+    sorted_categories = sorted(
+        category_count.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )[:10]
 
     x = [x[0] for x in sorted_categories]
     y = [x[1] for x in sorted_categories]
@@ -106,8 +115,16 @@ async def eda():
     plt.close()
 
     # График 2: Плотность расположения объектов
-    centers_x = [(bbox[0] + bbox[2]) / 2 for bbox_info in categories_bbox_info for bbox in bbox_info]
-    centers_y = [(bbox[1] + bbox[3]) / 2 for bbox_info in categories_bbox_info for bbox in bbox_info]
+    centers_x = [
+        (bbox[0] + bbox[2]) / 2
+        for bbox_info in categories_bbox_info
+        for bbox in bbox_info
+    ]
+    centers_y = [
+        (bbox[1] + bbox[3]) / 2
+        for bbox_info in categories_bbox_info
+        for bbox in bbox_info
+    ]
 
     plt.figure(figsize=(8, 8))
     sns.kdeplot(x=centers_x, y=centers_y, cmap="Reds", fill=True)
@@ -122,7 +139,11 @@ async def eda():
     plt.close()
 
     # График 3: Распределение площадей объектов
-    areas = [(bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) for bbox_info in categories_bbox_info for bbox in bbox_info]
+    areas = [
+        (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
+        for bbox_info in categories_bbox_info
+        for bbox in bbox_info
+    ]
 
     plt.figure(figsize=(8, 6))
     plt.hist(areas, bins=50)
@@ -144,6 +165,7 @@ async def eda():
         ]
     }
 
+
 # Дообучение модели
 @router.post("/fit", response_model=FitResponse)
 async def fit(request: FitRequest):
@@ -151,7 +173,10 @@ async def fit(request: FitRequest):
 
     if model_id == 'detect':
         if 'detect' not in loaded_models:
-            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="YOLO model not loaded.")
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail="YOLO model not loaded."
+            )
 
         yolov_model = loaded_models['detect']
         # data_path = os.path.join(os.getcwd(), 'fit/data.yaml')
@@ -168,10 +193,15 @@ async def fit(request: FitRequest):
         yolov_model.save(Path(__file__).parent.parent / 'models/custom.pt')
         loaded_models['custom'] = yolov_model  # Сохраняем в loaded_models
 
-        return FitResponse(message="YOLO model trained and saved as 'custom' successfully.")
+        return FitResponse(
+            message="YOLO model trained and saved as 'custom' successfully."
+        )
 
     else:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid model_id provided.")
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail="Invalid model_id provided."
+        )
 
 
 # Загрузка моделей
@@ -181,37 +211,64 @@ async def load(model_id: str):
         model_directory = Path(__file__).parent.parent / "models"
 
         if model_id == 'detect':
-            yolov_model_path = os.path.join(model_directory, 'custom_yolov11s_e100.pt')
+            yolov_model_path = os.path.join(
+                model_directory,
+                'custom_yolov11s_e100.pt'
+            )
             yolov_model = YOLO(yolov_model_path)
             loaded_models['detect'] = yolov_model
-            return [LoadResponse(message="YOLO model loaded successfully")]
+            return [
+                LoadResponse(message="YOLO model loaded successfully")
+            ]
 
         elif model_id == 'classific':
-            classification_model_path = os.path.join(model_directory, 'best_model_101class.keras')
+            classification_model_path = os.path.join(
+                model_directory,
+                'best_model_101class.keras'
+            )
             classification_model = load_model(classification_model_path)
             loaded_models['classific'] = classification_model
-            return [LoadResponse(message="Classification model loaded successfully")]
+            return [
+                LoadResponse(
+                    message="Classification model loaded successfully"
+                )
+            ]
 
         elif model_id == 'custom':
             # Загрузка кастомной модели
             for key, model in loaded_models.items():
                 if key == 'custom':
-                    return [LoadResponse(message="Custom model loaded successfully")]
+                    return [
+                        LoadResponse(
+                            message="Custom model loaded successfully"
+                        )
+                    ]
 
-            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Custom model not found.")
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail="Custom model not found."
+            )
 
         else:
-            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST,
-                                detail="Invalid model_id provided. Use 'detect', 'classific' or 'custom'.")
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail="Use 'detect', 'classific' or 'custom' model_id."
+            )
 
     except Exception as e:
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 
 @router.post("/predict", response_model=PredictionResponse)
 async def predict(model_id: str, images: List[UploadFile] = File(...)):
     if model_id not in loaded_models:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Model not found")
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail="Model not found"
+        )
 
     model = loaded_models[model_id]
     predictions = []
@@ -219,7 +276,10 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
     for uploaded_file in images:
         # Чтение файла
         image_bytes = await uploaded_file.read()
-        image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+        image = cv2.imdecode(
+            np.frombuffer(image_bytes, np.uint8),
+            cv2.IMREAD_COLOR
+        )
         if image is None:
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
@@ -243,11 +303,25 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
 
                     # Отрисовка bounding box
                     color = (0, 255, 0)  # Зеленый цвет
-                    cv2.rectangle(image, (x_min, y_min), (x_max, y_max), color, 2)
+                    cv2.rectangle(
+                        image,
+                        (x_min, y_min),
+                        (x_max, y_max),
+                        color,
+                        2
+                    )
 
                     # Добавление текста
                     label = f"{class_name} ({conf:.2f})"
-                    cv2.putText(image, label, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                    cv2.putText(
+                        image,
+                        label,
+                        (x_min, y_min - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        color,
+                        2
+                    )
 
             # Конвертируем изображение в Base64
             _, buffer = cv2.imencode(".jpg", image)
@@ -290,11 +364,25 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
 
                     # Отрисовка bounding box
                     color = (0, 255, 0)  # Зеленый цвет
-                    cv2.rectangle(image, (x_min, y_min), (x_max, y_max), color, 2)
+                    cv2.rectangle(
+                        image,
+                        (x_min, y_min),
+                        (x_max, y_max),
+                        color,
+                        2
+                    )
 
                     # Добавление текста
                     label = f"{class_name} ({conf:.2f})"
-                    cv2.putText(image, label, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                    cv2.putText(
+                        image,
+                        label,
+                        (x_min, y_min - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        color,
+                        2
+                    )
 
             # Конвертируем изображение в Base64
             _, buffer = cv2.imencode(".jpg", image)
@@ -309,7 +397,10 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
 @router.delete("/remove/{model_id}", response_model=RemoveResponse)
 async def remove(model_id: str):
     if model_id not in loaded_models:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Model not found")
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail="Model not found"
+        )
 
     del loaded_models[model_id]  # Удаляем модель из loaded_models
     return RemoveResponse(message=f"Model '{model_id}' removed successfully.")
@@ -322,6 +413,7 @@ async def remove_all():
 
     removed_models = list(loaded_models.keys())
     loaded_models.clear()  # Очищаем словарь загруженных моделей
-    return RemoveResponse(message=", ".join(f"Model '{model_id}' removed" for model_id in removed_models))
-
-
+    return RemoveResponse(message=", ".join(
+        f"Model '{model_id}' removed"
+        for model_id in removed_models
+    ))
