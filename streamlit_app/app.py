@@ -188,10 +188,7 @@ if st.button("Загрузить модель"):
                 logger.info(f"Модель {selected_model} успешно загружена.")
             else:
                 st.error(
-                    f"❌ Ошибка: {response.json().get(
-                        'detail',
-                        'Неизвестная ошибка'
-                    )}"
+                    f"❌ Ошибка: {response.json().get('detail','Неизв. ош.')}"
                 )
                 logger.error(
                     f"Ошибка загрузки модели {selected_model}: {response.text}"
@@ -250,9 +247,7 @@ if uploaded_files and st.button("🔍 Сделать предсказание"):
                 logger.info("Предсказания успешно выполнены и отображены.")
         else:
             st.error(
-                f"❌ Ошибка: {response.json().get(
-                    'detail',
-                    'Неизвестная ошибка')}"
+                f"❌ Ошибка: {response.json().get('detail','Неизв. ош.')}"
                 )
             logger.error(f"Ошибка предсказания: {response.text}")
     except Exception as e:
