@@ -24,19 +24,23 @@
    ```bash
    git clone <URL_репозитория>
    cd <папка_репозитория>
-   git checkout <название_ветки>
+   git checkout YOLO_train_Streamlit_service
    ```
 
 2. **Установите зависимости:**
-   Убедитесь, что у вас установлен Python 3.9+ и виртуальная среда.
+   Убедитесь, что у вас установлен Python 3.9+. Установите версии библиотек
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # Linux/MacOS
-   venv\Scripts\activate   # Windows
    pip install -r requirements.txt
    ```
 
-3. **Запустите приложение локально:**
+3. **Откройте 2 разные консоли (терминала)**
+
+3. **Запустите веб-сервер с помощью Uvicorn** (в первой консоли, из корневой папки проекта)
+   ```bash
+   uvicorn service.main:app --reload
+   ```
+
+4. **Запустите приложение локально** (во второй консоли, из папки streamlit_app)
    ```bash
    streamlit run app.py
    ```
