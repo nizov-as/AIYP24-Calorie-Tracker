@@ -48,20 +48,21 @@
 
 ## Сборка Docker-образа и запуск контейнера
 
-### 1. **Создайте Docker-образ**
-Убедитесь, что у вас установлен Docker.
+### 1. **Подготовка**
 
-Выполните команду для сборки Docker-образа:
+* Склонировать репозиторий, переключиться на ветку "Docker_build"
+* По [ссылке](https://drive.google.com/file/d/1N4Qy6LwOzENtHG8QdCQbBKlpSDVbCjZL/view?usp=sharing) загрузить веса классификатора и положить их в папку ./service/api/models/ данной ветки
+* Для запуска функции EDA необходимо скачать [датасет](http://foodcam.mobi/dataset256.zip) и поместить папку UECFOOD256 в папку ./service/data/ данной ветки
+
+### 2. **Сборка Docker-образа и запуск контейнера**
+
+* Проверить, что на вашем устройстве установлен Docker Desktop. Открыть Docker Desktop.
+* Открыть консоль (терминал) в корне проекта и последовательно выполнить следующие команды:
 ```bash
-docker build -t streamlit-service .
+docker login -u docker-username
+docker compose build (для первого запуска)
+docker compose up
 ```
-
-### 2. **Запустите контейнер**
-Запустите контейнер с приложением:
-```bash
-docker run -p 8501:8501 streamlit-service
-```
-
-Теперь приложение будет доступно по адресу [http://localhost:8501](http://localhost:8501).
+* Перейти по адресу - http://localhost:8501
 
 
