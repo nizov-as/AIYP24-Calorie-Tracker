@@ -205,7 +205,7 @@ async def fit(request: FitRequest):
 
     else:
 
-        logger.exception("Для дообучения была выбрана ннекорректная модель.")
+        logger.error("Для дообучения была выбрана ннекорректная модель.")
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail="Invalid model_id provided."
@@ -218,14 +218,14 @@ async def get_training_results():
     results_csv_path = results_dir / "results.csv"
     results_image_path = results_dir / "val_batch0_labels.jpg"
     if not results_dir.exists():
-        logger.exception("Директория с результатами обучения не найдена.")
+        logger.error("Директория с результатами обучения не найдена.")
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
             detail="Results directory not found."
         )
     # Проверяем наличие файла CSV
     if not results_csv_path.exists():
-        logger.exception("CSV файл с результатами обучения отсутствует.")
+        logger.error("CSV файл с результатами обучения отсутствует.")
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
             detail="Results CSV file not found."
@@ -235,7 +235,7 @@ async def get_training_results():
     results_table_html = results_df.to_html(index=False)
     # Проверяем наличие файла изображения
     if not results_image_path.exists():
-        logger.exception("Файл изображение с результатами обучения отсутствует.")
+        logger.error("Файл изображение с результатами обучения отсутствует.")
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
             detail="Results image file not found."
@@ -296,7 +296,7 @@ async def load(model_id: str):
                             message="Custom model loaded successfully"
                         )
                     ]
-            logger.exception(f"Дообученная YOLO не найдена")
+            logger.error(f"Дообученная YOLO не найдена")
             raise HTTPException(
                 status_code=HTTPStatus.NOT_FOUND,
                 detail="Custom model not found."
@@ -320,7 +320,7 @@ async def load(model_id: str):
 @router.post("/predict", response_model=PredictionResponse)
 async def predict(model_id: str, images: List[UploadFile] = File(...)):
     if model_id not in loaded_models:
-        logger.exception(f"Модель {model_id} не загружена")
+        logger.error(f"Модель {model_id} не загружена")
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
             detail="Model not found"
@@ -337,7 +337,7 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
             cv2.IMREAD_COLOR
         )
         if image is None:
-            logger.exception(f"Ошибка при декодировании входного изображения")
+            logger.error(f"Ошибка при декодировании входного изображения")
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
                 detail=f"Could not decode image: {uploaded_file.filename}",
@@ -457,7 +457,7 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
 @router.delete("/remove/{model_id}", response_model=RemoveResponse)
 async def remove(model_id: str):
     if model_id not in loaded_models:
-        logger.exception(f"Модель {model_id} не загружена")
+        logger.error(f"Модель {model_id} не загружена")
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
             detail="Model not found"
@@ -487,7 +487,7 @@ async def remove_all():
 @router.get("/loaded_models", response_model=ModelListResponse)
 async def get_loaded_models():
     if not loaded_models:
-        logger.exception("Загруженные модели отсутствуют")
+        logger.error("Загруженные модели отсутствуют")
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
             detail="The list of loaded models is empty."
