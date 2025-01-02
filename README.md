@@ -30,6 +30,9 @@
 2. **Установите зависимости:**
    Убедитесь, что у вас установлен Python 3.9+. Установите версии библиотек
    ```bash
+   python -m venv venv
+   source venv/bin/activate       # Linux/MacOS
+   source venv/scripts/activate   # Windows
    pip install -r requirements.txt
    ```
 
