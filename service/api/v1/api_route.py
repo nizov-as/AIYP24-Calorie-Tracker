@@ -12,9 +12,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from io import BytesIO
 from pathlib import Path
+from logger_config import setup_logger
 import pandas as pd
 
 router = APIRouter()
+
+logger = setup_logger()
 
 loaded_models = {}
 
@@ -158,6 +161,7 @@ async def eda():
     image_base64_3 = base64.b64encode(buf.getvalue()).decode('utf-8')
     plt.close()
 
+    logger.info("EDA успешно завершен, графики отрисованы.")
     return {
         "images": [
             image_base64_1,
@@ -194,11 +198,13 @@ async def fit(request: FitRequest):
         yolov_model.save(Path(__file__).parent.parent / 'models/custom.pt')
         loaded_models['custom'] = yolov_model  # Сохраняем в loaded_models
 
+        logger.info("Дообучение модели YOLO успешно завершено.")
         return FitResponse(
             message="YOLO model trained and saved as 'custom' successfully."
         )
 
     else:
+        logger.error("Для дообучения была выбрана ннекорректная модель.")
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail="Invalid model_id provided."
@@ -212,6 +218,7 @@ async def get_training_results():
     results_image_path = results_dir / "val_batch0_labels.jpg"
 
     if not results_dir.exists():
+        logger.error("Директория с результатами обучения не найдена.")
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
             detail="Results directory not found."
@@ -219,6 +226,7 @@ async def get_training_results():
 
     # Проверяем наличие файла CSV
     if not results_csv_path.exists():
+        logger.error("CSV файл с результатами обучения отсутствует.")
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
             detail="Results CSV file not found."
@@ -230,6 +238,7 @@ async def get_training_results():
 
     # Проверяем наличие файла изображения
     if not results_image_path.exists():
+        logger.error("Файл изображение с результатами обучения отсутствует.")
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
             detail="Results image file not found."
@@ -239,7 +248,7 @@ async def get_training_results():
     with open(results_image_path, "rb") as image_file:
         image_bytes = image_file.read()
         encoded_image = base64.b64encode(image_bytes).decode("utf-8")
-
+    logger.info("Результаты обучения возвращены.")
     return ApiResponse(
         message="Training results retrieved successfully.",
         data={
@@ -262,6 +271,7 @@ async def load(model_id: str):
             )
             yolov_model = YOLO(yolov_model_path)
             loaded_models['detect'] = yolov_model
+            logger.info(f"Модель YOLO успешно загружена.")
             return [
                 LoadResponse(message="YOLO model loaded successfully")
             ]
@@ -273,6 +283,7 @@ async def load(model_id: str):
             )
             classification_model = load_model(classification_model_path)
             loaded_models['classific'] = classification_model
+            logger.info(f"Модель классификации успешно загружена.")
             return [
                 LoadResponse(
                     message="Classification model loaded successfully"
@@ -283,24 +294,27 @@ async def load(model_id: str):
             # Загрузка кастомной модели
             for key, model in loaded_models.items():
                 if key == 'custom':
+                    logger.info(f"Дообученная YOLO успешно загружена.")
                     return [
                         LoadResponse(
                             message="Custom model loaded successfully"
                         )
                     ]
-
+            logger.error(f"Дообученная YOLO не найдена")
             raise HTTPException(
                 status_code=HTTPStatus.NOT_FOUND,
                 detail="Custom model not found."
             )
 
         else:
+            logger.info(f"Некорректное значение model_id - {model_id}")
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
                 detail="Use 'detect', 'classific' or 'custom' model_id."
             )
 
     except Exception as e:
+        logger.error("Ошибка при загрузке модели")
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail=str(e)
@@ -310,6 +324,7 @@ async def load(model_id: str):
 @router.post("/predict", response_model=PredictionResponse)
 async def predict(model_id: str, images: List[UploadFile] = File(...)):
     if model_id not in loaded_models:
+        logger.error(f"Модель {model_id} не загружена")
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
             detail="Model not found"
@@ -326,6 +341,7 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
             cv2.IMREAD_COLOR
         )
         if image is None:
+            logger.error(f"Ошибка при декодировании входного изображения")
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
                 detail=f"Could not decode image: {uploaded_file.filename}",
@@ -372,6 +388,7 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
             _, buffer = cv2.imencode(".jpg", image)
             image_base64 = base64.b64encode(buffer).decode("utf-8")
 
+            logger.info("Модель {model_id} сделала предсказание")
             predictions.append({
                 "image": image_base64,  # Возвращаем изображение в Base64
             })
@@ -387,6 +404,7 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
             index = np.argmax(pred)
             class_name = str(index)
             confidence = pred[0][index]  # Уверенность предсказания
+            logger.info("Модель {model_id} сделала предсказание")
             predictions.append({
                 'class': class_name,  # Получаем предсказанный класс
                 'confidence': confidence  # Уверенность предсказания
@@ -432,7 +450,7 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
             # Конвертируем изображение в Base64
             _, buffer = cv2.imencode(".jpg", image)
             image_base64 = base64.b64encode(buffer).decode("utf-8")
-
+            logger.info("Модель {model_id} сделала предсказание")
             predictions.append({
                 "image": image_base64,  # Возвращаем изображение в Base64
             })
@@ -442,11 +460,12 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
 @router.get("/loaded_models", response_model=ModelListResponse)
 async def get_loaded_models():
     if not loaded_models:
+        logger.error("Загруженные модели отсутствуют")
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
             detail="The list of loaded models is empty."
         )
-
+    logger.info("Возвращен список загруженных моделей.")
     models = [
         {"model_id": model_id, "status": "loaded"}
         for model_id in loaded_models.keys()
@@ -456,22 +475,26 @@ async def get_loaded_models():
 @router.delete("/remove/{model_id}", response_model=RemoveResponse)
 async def remove(model_id: str):
     if model_id not in loaded_models:
+        logger.error(f"Модель {model_id} не загружена")
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
             detail="Model not found"
         )
 
     del loaded_models[model_id]  # Удаляем модель из loaded_models
+    logger.info(f"Модель {model_id} удалена из загруженных.")
     return RemoveResponse(message=f"Model '{model_id}' removed successfully.")
 
 
 @router.delete("/remove_all", response_model=RemoveResponse)
 async def remove_all():
     if not loaded_models:
+        logger.info(f"Нет загруженных моделей.")
         return RemoveResponse(message="No models to remove")
 
     removed_models = list(loaded_models.keys())
     loaded_models.clear()  # Очищаем словарь загруженных моделей
+    logger.info(f"Загруженные модели удалены.")
     return RemoveResponse(message=", ".join(
         f"Model '{model_id}' removed"
         for model_id in removed_models
