@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from io import BytesIO
 from pathlib import Path
-from logger_config import setup_logger
+from service.logger_config import setup_logger
 import pandas as pd
 
 router = APIRouter()

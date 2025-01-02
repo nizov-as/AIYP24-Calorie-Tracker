@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel, ConfigDict
 from service.api.v1.api_route import router
-from logger_config import setup_logger
+from service.logger_config import setup_logger
 
 
 app = FastAPI(
