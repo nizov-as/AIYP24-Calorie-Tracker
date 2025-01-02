@@ -140,6 +140,91 @@ if st.sidebar.button("⚙️ Дообучить модель YOLO на двух 
             )
             logger.exception("Ошибка при дообучении модели YOLO.")
 
+# Ручка для получения списка загруженных моделей
+MODELS_URL = f"{BASE_URL}/loaded_models"
+
+# Инициализация состояния для отображения списка
+if "show_models" not in st.session_state:
+    st.session_state["show_models"] = False  # Изначально скрыто
+if "models_list" not in st.session_state:
+    st.session_state["models_list"] = []  # Пустой список моделей
+
+# Кнопка для отображения/скрытия списка загруженных моделей
+if st.sidebar.button("📂 Показать/Скрыть загруженные модели"):
+    # Переключаем состояние отображения
+    st.session_state["show_models"] = not st.session_state["show_models"]
+    
+    # Если показываем список, отправляем запрос
+    if st.session_state["show_models"]:
+        try:
+            response = requests.get(MODELS_URL)
+            if response.status_code == 200:
+                models = response.json().get("models", [])
+                st.session_state["models_list"] = models  # Сохраняем список в состоянии
+                logger.info("Список загруженных моделей получен.")
+            else:
+                st.session_state["models_list"] = []
+                error_detail = response.json().get("detail", response.text)
+                st.sidebar.error(f"❌ Ошибка: {error_detail}")
+                logger.error(f"Ошибка при получении списка моделей: {error_detail}")
+        except Exception as e:
+            st.session_state["models_list"] = []
+            st.sidebar.error(f"⚠️ Произошла ошибка: {str(e)}")
+            logger.exception("Ошибка при запросе списка моделей.")
+
+# Отображение списка моделей
+if st.session_state["show_models"]:
+    if st.session_state["models_list"]:
+        st.sidebar.markdown("### Загруженные модели:")
+        for model in st.session_state["models_list"]:
+            st.sidebar.write(f"- ID: {model['model_id']} | Статус: {model['status']}")
+    else:
+        st.sidebar.warning("⚠️ Список загруженных моделей пуст.")
+
+# Инициализация состояния для управления отображением результатов дообучения
+if "show_fit_results" not in st.session_state:
+    st.session_state["show_fit_results"] = False
+
+# Кнопка для показа/скрытия результатов дообучения
+if st.sidebar.button("📊 Посмотреть/Скрыть результаты дообучения"):
+    st.session_state["show_fit_results"] = not st.session_state["show_fit_results"]
+
+# Если результаты нужно показать
+if st.session_state["show_fit_results"]:
+    with st.spinner("Получение результатов дообучения..."):
+        try:
+            # Запрос к серверу
+            response = requests.get(f"{BASE_URL}/fit/results")
+            if response.status_code == 200:
+                # Извлечение данных из ответа
+                results_data = response.json().get("data", {})
+                results_table = results_data.get("results_table", "")
+                results_image = results_data.get("val_batch0_labels_image", "")
+
+                # Отображение таблицы результатов
+                if results_table:
+                    st.write("### Результаты дообучения модели:")
+                    st.write(results_table, unsafe_allow_html=True)
+                else:
+                    st.warning("Таблица результатов отсутствует.")
+
+                # Отображение изображения результатов
+                if results_image:
+                    st.write("### Визуализация (val_batch0_labels.jpg):")
+                    image = Image.open(io.BytesIO(base64.b64decode(results_image.split(",")[1])))
+                    st.image(image, caption="val_batch0_labels.jpg")
+                else:
+                    st.warning("Изображение результатов отсутствует.")
+
+                logger.info("Результаты дообучения успешно получены.")
+            else:
+                error_detail = response.json().get("detail", response.text)
+                st.sidebar.error(f"❌ Ошибка: {error_detail}")
+                logger.error(f"Ошибка получения результатов дообучения: {error_detail}")
+        except Exception as e:
+            st.sidebar.error(f"⚠️ Ошибка при получении результатов: {str(e)}")
+            logger.exception("Ошибка получения результатов дообучения.")
+
 # Кнопка для проверки состояния сервиса
 if st.sidebar.button("🛠️ Проверить состояние сервиса"):
     try:

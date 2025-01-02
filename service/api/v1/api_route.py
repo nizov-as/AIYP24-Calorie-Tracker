@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from io import BytesIO
 from pathlib import Path
+import pandas as pd
 
 router = APIRouter()
 
@@ -202,6 +203,50 @@ async def fit(request: FitRequest):
             status_code=HTTPStatus.BAD_REQUEST,
             detail="Invalid model_id provided."
         )
+    
+    
+@router.get("/fit/results", response_model=ApiResponse)
+async def get_training_results():
+    results_dir = Path("runs/detect/yolov11s_client")
+    results_csv_path = results_dir / "results.csv"
+    results_image_path = results_dir / "val_batch0_labels.jpg"
+
+    if not results_dir.exists():
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail="Results directory not found."
+        )
+
+    # Проверяем наличие файла CSV
+    if not results_csv_path.exists():
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail="Results CSV file not found."
+        )
+
+    # Загружаем данные из results.csv
+    results_df = pd.read_csv(results_csv_path)
+    results_table_html = results_df.to_html(index=False)
+
+    # Проверяем наличие файла изображения
+    if not results_image_path.exists():
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail="Results image file not found."
+        )
+
+    # Кодируем изображение в base64
+    with open(results_image_path, "rb") as image_file:
+        image_bytes = image_file.read()
+        encoded_image = base64.b64encode(image_bytes).decode("utf-8")
+
+    return ApiResponse(
+        message="Training results retrieved successfully.",
+        data={
+            "results_table": results_table_html,
+            "val_batch0_labels_image": f"data:image/jpeg;base64,{encoded_image}"
+        }
+    )
 
 
 # Загрузка моделей
@@ -393,6 +438,20 @@ async def predict(model_id: str, images: List[UploadFile] = File(...)):
             })
     return PredictionResponse(predictions=predictions)
 
+# Ручка для получения списка загруженных моделей
+@router.get("/loaded_models", response_model=ModelListResponse)
+async def get_loaded_models():
+    if not loaded_models:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail="The list of loaded models is empty."
+        )
+
+    models = [
+        {"model_id": model_id, "status": "loaded"}
+        for model_id in loaded_models.keys()
+    ]
+    return ModelListResponse(models=models)
 
 @router.delete("/remove/{model_id}", response_model=RemoveResponse)
 async def remove(model_id: str):
