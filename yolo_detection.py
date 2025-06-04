@@ -3,9 +3,13 @@ import cv2
 import torch
 import numpy as np
 from typing import Dict, Tuple
-from ultralytics.nn.tasks import DetectionModel
+from torch.nn.modules.container import Sequential
 
-torch.serialization.add_safe_globals([DetectionModel])
+torch.serialization.add_safe_globals([
+    torch.nn.Module,
+    Sequential,
+    __import__('ultralytics.nn.tasks').nn.tasks.DetectionModel
+])
 
 class FoodDetector:
     def __init__(self, model_path):
