@@ -1,11 +1,13 @@
 from ultralytics import YOLO
 import cv2
+import torch
 import numpy as np
 from typing import Dict, Tuple
 
 class FoodDetector:
-    def __init__(self, model_path: str):
-        self.model = YOLO(model_path)
+    def __init__(self, model_path):
+        with torch.serialization.safe_globals([torch.nn.Module]):
+            self.model = YOLO(model_path)
         self.confidence_threshold = 0.4
 
     def detect_and_visualize(self, image_bytes: bytes) -> Tuple[Dict[str, float], bytes]:
