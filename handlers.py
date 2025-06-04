@@ -45,7 +45,7 @@ ACTIVITY_LEVELS = {
 }
 
 # Загрузка весов модели
-food_detector = FoodDetector("models/food_yolov11s.pt") 
+food_detector = FoodDetector("models/food_yolov11s.onnx") 
 
 def create_profile_keyboard():
     return ReplyKeyboardMarkup(

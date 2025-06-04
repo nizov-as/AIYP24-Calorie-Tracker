@@ -5,7 +5,7 @@ from typing import Dict, Tuple
 
 class FoodDetector:
     def __init__(self, model_path):
-        self.model = YOLO(model_path.replace('.pt', '.onnx'))
+        self.model = YOLO(model_path)
         self.confidence_threshold = 0.4
 
     def detect_and_visualize(self, image_bytes: bytes) -> Tuple[Dict[str, float], bytes]:
