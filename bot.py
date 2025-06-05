@@ -41,6 +41,7 @@ async def main():
     try:
         await dp.start_polling(bot)
     finally:
+        await redis_conn.close()
         await storage.close()
 
 if __name__ == "__main__":

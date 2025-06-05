@@ -161,9 +161,7 @@ async def view_profile(message: Message):
     )
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✏️ Изменить профиль", callback_data="edit_profile")],
-        [InlineKeyboardButton(text="📊 Показать графики", callback_data="show_graphs")]
-    ])
+        [InlineKeyboardButton(text="✏️ Изменить профиль", callback_data="edit_profile")]])
     
     await message.answer(profile_text, reply_markup=keyboard, parse_mode="HTML")
 
@@ -312,7 +310,7 @@ async def send_progress_graphs(message: Message):
         autopct='%1.1f%%',
         startangle=90
     )
-    ax1.set_title('💧 Потребление воды', fontsize=14)
+    ax1.set_title('Потребление воды', fontsize=14)
     
     # График калорий
     calories_left = max(user['calorie_goal'] - user['logged_calories'], 0)
@@ -323,7 +321,7 @@ async def send_progress_graphs(message: Message):
         autopct='%1.1f%%',
         startangle=90
     )
-    ax2.set_title('🍎 Баланс калорий', fontsize=14)
+    ax2.set_title('Баланс калорий', fontsize=14)
     
     plt.tight_layout()
     
