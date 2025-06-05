@@ -3,7 +3,8 @@ import logging
 import os
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
-from aiogram.fsm.storage.redis import Redis, RedisStorage
+from aiogram.fsm.storage.redis import RedisStorage
+import redis.asyncio as redis
 from config import TOKEN
 from handlers import setup_handlers
 from middlewares import LoggingMiddleware
@@ -19,13 +20,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Настраиваем хранилище состояний на Redis (берём из переменных окружения)
-redis = Redis(
+redis_conn = redis.Redis(
     host=os.getenv("REDIS_HOST"),
     port=int(os.getenv("REDIS_PORT")),
     password=os.getenv("REDIS_PASSWORD"),
     ssl=os.getenv("REDIS_SSL", "false").lower() == "true",
 )
-storage = RedisStorage(redis=redis)
+storage = RedisStorage(redis=redis_conn)
 
 # 🤖 Создаем экземпляры бота и диспетчера
 bot = Bot(token=TOKEN)
@@ -37,7 +38,10 @@ setup_handlers(dp)
 
 async def main():
     logger.info("Бот запущен ✅")
-    await dp.start_polling(bot)
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await storage.close()
 
 if __name__ == "__main__":
     try:
