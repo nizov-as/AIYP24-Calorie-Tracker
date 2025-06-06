@@ -3,6 +3,7 @@ import logging
 import os
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
+from aiohttp import web
 from aiogram.fsm.storage.redis import RedisStorage
 import redis.asyncio as redis
 from config import TOKEN
@@ -18,6 +19,16 @@ logging.basicConfig(
     format="%(asctime)s - [%(levelname)s] - %(name)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# Функция для health check
+async def handle_healthcheck(request):
+    return web.Response(text="OK")
+
+# Запуск HTTP-сервера в отдельном потоке
+def run_web_app():
+    app = web.Application()
+    app.add_routes([web.get('/', handle_healthcheck)])
+    web.run_app(app, port=8000, host='0.0.0.0')
 
 # Настраиваем хранилище состояний на Redis (берём из переменных окружения)
 redis_conn = redis.Redis(
@@ -41,8 +52,8 @@ async def main():
     try:
         await dp.start_polling(bot)
     finally:
-        await redis_conn.close()
-        await storage.close()
+        await redis_conn.aclose()
+        await storage.aclose()
 
 if __name__ == "__main__":
     try:
