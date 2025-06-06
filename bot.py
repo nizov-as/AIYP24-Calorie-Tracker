@@ -1,9 +1,10 @@
 import asyncio
 import logging
 import os
+import threading
+from aiohttp import web
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
-from aiohttp import web
 from aiogram.fsm.storage.redis import RedisStorage
 import redis.asyncio as redis
 from config import TOKEN
@@ -26,11 +27,13 @@ async def handle_healthcheck(request):
 
 # Запуск HTTP-сервера в отдельном потоке
 def run_web_app():
+    port = int(os.getenv('PORT', 8000))  # Используем PORT из окружения или 8000 по умолчанию
     app = web.Application()
     app.add_routes([web.get('/', handle_healthcheck)])
-    web.run_app(app, port=8000, host='0.0.0.0')
+    logger.info(f"Starting HTTP server on port {port}")
+    web.run_app(app, port=port, host='0.0.0.0')
 
-# Настраиваем хранилище состояний на Redis (берём из переменных окружения)
+# Настраиваем хранилище состояний на Redis
 redis_conn = redis.Redis(
     host=os.getenv("REDIS_HOST"),
     port=int(os.getenv("REDIS_PORT")),
@@ -39,15 +42,18 @@ redis_conn = redis.Redis(
 )
 storage = RedisStorage(redis=redis_conn)
 
-# 🤖 Создаем экземпляры бота и диспетчера
+# Создаем экземпляры бота и диспетчера
 bot = Bot(token=TOKEN)
 dp = Dispatcher(storage=storage)
 
-# 🔗 Подключаем middleware и handlers
+# Подключаем middleware и handlers
 dp.message.middleware(LoggingMiddleware())
 setup_handlers(dp)
 
 async def main():
+    # Запускаем HTTP-сервер в фоне
+    threading.Thread(target=run_web_app, daemon=True).start()
+    
     logger.info("Бот запущен ✅")
     try:
         await dp.start_polling(bot)
