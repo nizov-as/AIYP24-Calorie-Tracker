@@ -10,10 +10,6 @@ RUN apt-get update && apt-get install -y \
 ENV GIT_PYTHON_REFRESH=quiet
 ENV YOLO_DISABLE_GIT=1
 
-
-# Устанавливаем переменную PORT по умолчанию
-ENV PORT=8000
-
 WORKDIR /app
 
 COPY requirements.txt .
