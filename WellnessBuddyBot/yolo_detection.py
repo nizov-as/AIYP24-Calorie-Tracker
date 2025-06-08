@@ -4,7 +4,7 @@ import numpy as np
 from typing import Dict, Tuple
 
 class FoodDetector:
-    def __init__(self, model_path: str):
+    def __init__(self, model_path):
         self.model = YOLO(model_path)
         self.confidence_threshold = 0.4
 

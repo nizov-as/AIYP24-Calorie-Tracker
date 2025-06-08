@@ -45,7 +45,7 @@ ACTIVITY_LEVELS = {
 }
 
 # Загрузка весов модели
-food_detector = FoodDetector("models/food_yolov11s.pt") 
+food_detector = FoodDetector("models/food_yolov11s.onnx") 
 
 def create_profile_keyboard():
     return ReplyKeyboardMarkup(
@@ -86,14 +86,14 @@ async def ensure_profile(message: Message):
 
 
 # Функция перевода с русского на английский
-async def translate_to_eng(text: str):
-    translated = await translator.translate(text, src='ru', dest='en')
+def translate_to_eng(text: str) -> str:
+    translated = translator.translate(text, src='ru', dest='en')
     return translated.text
 
 
 # Функция перевода с английского на русский
-async def translate_to_ru(text: str) -> str:
-    translated = await translator.translate(text, src='en', dest='ru')
+def translate_to_ru(text: str) -> str:
+    translated = translator.translate(text, src='en', dest='ru')
     return translated.text
 
 
@@ -161,9 +161,7 @@ async def view_profile(message: Message):
     )
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✏️ Изменить профиль", callback_data="edit_profile")],
-        [InlineKeyboardButton(text="📊 Показать графики", callback_data="show_graphs")]
-    ])
+        [InlineKeyboardButton(text="✏️ Изменить профиль", callback_data="edit_profile")]])
     
     await message.answer(profile_text, reply_markup=keyboard, parse_mode="HTML")
 
@@ -312,7 +310,7 @@ async def send_progress_graphs(message: Message):
         autopct='%1.1f%%',
         startangle=90
     )
-    ax1.set_title('💧 Потребление воды', fontsize=14)
+    ax1.set_title('Потребление воды', fontsize=14)
     
     # График калорий
     calories_left = max(user['calorie_goal'] - user['logged_calories'], 0)
@@ -323,7 +321,7 @@ async def send_progress_graphs(message: Message):
         autopct='%1.1f%%',
         startangle=90
     )
-    ax2.set_title('🍎 Баланс калорий', fontsize=14)
+    ax2.set_title('Баланс калорий', fontsize=14)
     
     plt.tight_layout()
     
@@ -422,7 +420,7 @@ async def request_name_manually(message: Message, state: FSMContext):
 async def process_food_name(message: Message, state: FSMContext):
     food_name = message.text
     try:
-        food_name_translated = await translate_to_eng(food_name)
+        food_name_translated = translate_to_eng(food_name)
         food_info = await get_food_info_nutritionix(food_name_translated)
 
         if not food_info:
@@ -739,7 +737,7 @@ async def handle_food_photo(message: Message, state: FSMContext):
         # Переводим названия и создаём кнопки
         keyboard_buttons = []
         for food_en in detected_foods.keys():
-            food_ru = await translate_to_ru(food_en)
+            food_ru = translate_to_ru(food_en)
             # Формат: Название на русском (английское)
             display_text = f"{food_ru} ({food_en})"
             keyboard_buttons.append([KeyboardButton(text=display_text)])
